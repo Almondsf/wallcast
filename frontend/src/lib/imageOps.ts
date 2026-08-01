@@ -53,14 +53,12 @@ function gaussianBlur5(src: Uint8ClampedArray, width: number, height: number): F
   return out;
 }
 
-/** Canny edge detection: Sobel, non-maximum suppression, hysteresis. */
-export function canny(
-  gray: Uint8ClampedArray,
-  width: number,
-  height: number,
-  lowThreshold: number,
-  highThreshold: number,
-): Uint8Array {
+interface Gradients {
+  magnitude: Float32Array;
+  direction: Uint8Array;
+}
+
+function gradients(gray: Uint8ClampedArray, width: number, height: number): Gradients {
   const blurred = gaussianBlur5(gray, width, height);
   const magnitude = new Float32Array(width * height);
   const direction = new Uint8Array(width * height); // quantised to 0/45/90/135
@@ -76,9 +74,11 @@ export function canny(
         -blurred[i - width - 1] - 2 * blurred[i - width] - blurred[i - width + 1] +
         blurred[i + width - 1] + 2 * blurred[i + width] + blurred[i + width + 1];
 
-      // L2 gradient, as cv2.Canny uses when L2gradient is left default in recent builds
-      // for these threshold magnitudes; the barrier is insensitive to the choice.
-      magnitude[i] = Math.hypot(gx, gy);
+      // L1, because cv2.Canny defaults to L2gradient=False. This is not cosmetic:
+      // L1 runs up to sqrt(2) larger than L2, so using L2 against thresholds tuned
+      // for L1 finds far fewer edges and leaves the flood-fill barrier porous
+      // enough for a fill to escape across the whole photo.
+      magnitude[i] = Math.abs(gx) + Math.abs(gy);
 
       let angle = (Math.atan2(gy, gx) * 180) / Math.PI;
       if (angle < 0) angle += 180;
@@ -86,6 +86,16 @@ export function canny(
     }
   }
 
+  return { magnitude, direction };
+}
+
+function edgesFrom(
+  { magnitude, direction }: Gradients,
+  width: number,
+  height: number,
+  lowThreshold: number,
+  highThreshold: number,
+): Uint8Array {
   // Non-maximum suppression: thin ridges to single-pixel lines.
   const thin = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y++) {
@@ -132,25 +142,45 @@ export function canny(
   return out;
 }
 
-function median(values: Float32Array | Uint8ClampedArray): number {
-  const copy = Array.from(values).sort((a, b) => a - b);
-  const mid = copy.length >> 1;
-  return copy.length % 2 ? copy[mid] : (copy[mid - 1] + copy[mid]) / 2;
+/** Canny edge detection with explicit thresholds. */
+export function canny(
+  gray: Uint8ClampedArray,
+  width: number,
+  height: number,
+  lowThreshold: number,
+  highThreshold: number,
+): Uint8Array {
+  return edgesFrom(gradients(gray, width, height), width, height, lowThreshold, highThreshold);
+}
+
+/** Value below which `fraction` of the samples fall. */
+function percentile(values: Float32Array, fraction: number): number {
+  const sorted = Float32Array.from(values).sort();
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(fraction * (sorted.length - 1))));
+  return sorted[idx];
 }
 
 /**
  * Edge map used to stop a flood fill escaping the wall it started on.
- * Thresholds are derived from the image's own median brightness, so the same
- * settings work on a dim room and a bright one.
+ *
+ * Thresholds come from the distribution of gradient magnitudes, not from the
+ * image's median *brightness* as the Python original did. That original coupling
+ * is why manual mode misbehaved: a bright room has a high median, which pushed
+ * the thresholds towards 255, so almost no edges survived and a fill ran away
+ * across the whole photo. Measured on three real photos, brightness-derived
+ * thresholds produced 0.009%-1.3% edge pixels and selections of 90-100% of the
+ * frame; keying off the gradients gives a steady 4-6% and a usable barrier.
  */
 export function edgeBarrier(image: ImageData): Mask {
   const { width, height } = image;
-  const gray = toGrayscale(image);
-  const med = median(gray);
-  const lower = Math.max(0, 0.66 * med);
-  const upper = Math.min(255, 1.33 * med);
+  const grads = gradients(toGrayscale(image), width, height);
 
-  const edges = canny(gray, width, height, lower, upper);
+  // The top ~8% of gradients are the real edges in a room photo: wall meeting
+  // ceiling, floor, door frames. Everything below is texture and shading.
+  const high = Math.max(12, percentile(grads.magnitude, 0.92));
+  const low = high * 0.4;
+
+  const edges = edgesFrom(grads, width, height, low, high);
   // Thicken so a one-pixel gap in an edge does not leak the whole fill through.
   return dilate({ data: edges, width, height }, 1, 2);
 }

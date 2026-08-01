@@ -1,0 +1,32 @@
+# WallCast is a static site: wall detection, recolouring and export all run in
+# the browser, so there is nothing to deploy but files.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Cross-origin isolation. ONNX Runtime only uses threaded WASM when
+# SharedArrayBuffer is available, and that requires both headers. The model is
+# fetched from the HuggingFace CDN, which serves CORS headers, so require-corp
+# does not block it — this is the same configuration the dev server runs.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+# The ONNX runtime is a ~23MB wasm binary with a content-hashed filename, so it
+# can be cached indefinitely. Without this every visit re-downloads it.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

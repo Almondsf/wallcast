@@ -1,0 +1,14 @@
+# Copied into dist/ by Vite, so these apply whether the site is deployed from a
+# git build or by uploading the folder directly.
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+# Content-hashed filenames, including the ~23MB ONNX runtime, so they can be
+# cached indefinitely. Without this every visit re-downloads the runtime.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate

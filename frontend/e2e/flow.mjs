@@ -16,22 +16,49 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 1500 } });
 
 const errors = [];
-page.on("pageerror", (e) => errors.push(e.message));
+page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+page.on("requestfailed", (r) =>
+  errors.push(`requestfailed: ${r.url().slice(0, 120)} — ${r.failure()?.errorText}`),
+);
+page.on("response", (r) => {
+  if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url().slice(0, 120)}`);
+});
 
 function step(msg) {
   console.log(`- ${msg}`);
 }
 
-await page.goto("http://localhost:5173/", { waitUntil: "domcontentloaded" });
-step("loaded landing page");
+const BASE = process.env.BASE_URL ?? "http://localhost:5173";
+await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+step(`loaded ${BASE}`);
+
+const isolated = await page.evaluate(() => ({
+  crossOriginIsolated: globalThis.crossOriginIsolated === true,
+  sharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
+}));
+step(`crossOriginIsolated=${isolated.crossOriginIsolated} SharedArrayBuffer=${isolated.sharedArrayBuffer}`);
 
 await page.waitForSelector("input[type=file]", { state: "attached" });
 await page.setInputFiles("input[type=file]", PHOTO);
 step(`uploaded ${PHOTO}`);
 
 // Wall detection runs in the browser; give it room on a slow machine.
-await page.waitForSelector("text=/% of the photo selected as wall/", { timeout: 300000 });
+try {
+  await page.waitForSelector("text=/% of the photo selected as wall/", { timeout: 300000 });
+} catch (e) {
+  console.log(`\ndetection never finished: ${e.message.split("\n")[0]}`);
+  console.log(`status: ${await page.textContent(".status").catch(() => "none")}`);
+  if (errors.length) {
+    console.log(`errors (${errors.length}):`);
+    for (const x of errors.slice(0, 10)) console.log(`  ${x.slice(0, 300)}`);
+  } else {
+    console.log("no console errors captured");
+  }
+  await page.screenshot({ path: `${OUT}/flow-fail.png`, fullPage: true });
+  await browser.close();
+  process.exit(1);
+}
 const cover = await page.textContent("text=/% of the photo selected as wall/");
 step(`detection finished: ${cover.trim()}`);
 await page.screenshot({ path: `${OUT}/flow-1-detected.png`, fullPage: true });
@@ -63,6 +90,7 @@ step(`download button visible: ${hasDownload}`);
 
 // Reload and confirm persistence.
 await page.reload({ waitUntil: "domcontentloaded" });
+step("reloaded");
 await page.waitForSelector(".render-image-wrap canvas, .render-placeholder", { timeout: 120000 });
 const remembered = await page.isVisible(".render-image-wrap canvas");
 step(`after reload, room remembered with render: ${remembered}`);

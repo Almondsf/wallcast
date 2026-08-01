@@ -9,10 +9,11 @@ const page = await browser.newPage();
 
 // Fixtures are served from disk rather than public/, so they never reach a
 // production build. They are derived from real photos and don't belong there.
-await page.route("**/fixtures/*.png", async (route, request) => {
+await page.route("**/fixtures/*", async (route, request) => {
   const name = request.url().split("/").pop();
+  const type = name.endsWith(".json") ? "application/json" : "image/png";
   try {
-    await route.fulfill({ path: `e2e/assets/fixtures/${name}`, contentType: "image/png" });
+    await route.fulfill({ path: `e2e/assets/fixtures/${name}`, contentType: type });
   } catch {
     await route.fulfill({ status: 404, body: "missing fixture" });
   }
