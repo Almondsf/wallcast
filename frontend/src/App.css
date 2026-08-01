@@ -395,17 +395,31 @@ button {
   font-weight: 600;
 }
 
+/* Phone photos are tall — 2:3 is common, and at full column width that runs
+   past the bottom of the screen. Capping the height keeps the whole room
+   visible without scrolling; width follows from the aspect ratio. */
+:root {
+  --media-max-h: 68vh;
+}
+
 .mask-canvas-wrap {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   line-height: 0;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .mask-canvas {
-  width: 100%;
-  height: auto;
   display: block;
+  /* width/height auto so the intrinsic size is scaled down by the two maxima
+     with the aspect ratio preserved, rather than stretched to the container. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--media-max-h);
   cursor: crosshair;
 }
 
@@ -424,13 +438,19 @@ button {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  width: 100%;
+  /* Hugs the scaled photo so the brush overlay, which is pinned to the stage,
+     stays exactly aligned with it. */
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .mask-editor-photo {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: var(--media-max-h);
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -461,18 +481,28 @@ button {
    looked tiny next to the mask canvas opposite it. */
 .render-image-wrap {
   position: relative;
+  /* fit-content so the wrap hugs the scaled canvas — otherwise the two-tone
+     split line, which spans the wrap, would run wider than the image. */
   display: block;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   line-height: 0;
 }
 
+/* The render is a canvas, not an img. Styling only `img` here left the canvas
+   at its intrinsic pixel size inside an overflow:hidden wrap, so a tall photo
+   was silently cropped rather than scaled. */
+.render-image-wrap canvas,
 .render-image-wrap img {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: var(--media-max-h);
 }
 
 .split-line {
