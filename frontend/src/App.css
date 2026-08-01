@@ -32,7 +32,55 @@ button {
   color: var(--error);
 }
 
-/* --- Auth --- */
+/* --- Landing / upload --- */
+
+.landing {
+  max-width: 620px;
+  margin: 48px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.landing h1 {
+  font-size: 26px;
+  margin: 0;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  margin-top: 12px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.dropzone.dragging {
+  border-color: var(--accent);
+}
+
+.progress {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* --- Auth (unused; kept for the old flow's styling) --- */
 
 .auth-page {
   max-width: 360px;

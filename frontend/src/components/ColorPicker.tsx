@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PaintColor } from "../types";
+import type { PaintColor } from "../paints";
 
 interface Props {
   label: string;
   colors: PaintColor[];
-  value: number | "";
-  onChange: (id: number | "") => void;
+  value: number | null;
+  onChange: (id: number | null) => void;
   disabled?: boolean;
   /** Shows a clear button, for the optional second colour. */
   allowClear?: boolean;
@@ -15,16 +15,14 @@ interface Props {
 function matches(color: PaintColor, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  // Hex is matched with the # optional so "2c5f" and "#2c5f" both work. The
-  // manufacturer code is matched the same way, since Berger's own codes contain
-  // hyphens people leave out ("nfr06" should still find NF-R06).
-  const hex = color.hex_code.toLowerCase();
-  const code = (color.code ?? "").toLowerCase();
+  // Hex and the Berger code are both matched with separators optional, so
+  // "2c5f", "#2c5f", "nfr06" and "NF-R06" all find what you'd expect.
   const loose = q.replace(/[-\s#]/g, "");
+  const hex = color.hex.toLowerCase();
+  const code = color.code.toLowerCase();
   return (
     color.name.toLowerCase().includes(q) ||
     color.brand.toLowerCase().includes(q) ||
-    (color.finish ?? "").toLowerCase().includes(q) ||
     code.includes(q) ||
     (loose.length > 0 && code.replace(/-/g, "").includes(loose)) ||
     hex.includes(q) ||
@@ -49,17 +47,9 @@ export default function ColorPicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const selected = useMemo(
-    () => colors.find((c) => c.id === value) ?? null,
-    [colors, value],
-  );
+  const selected = useMemo(() => colors.find((c) => c.id === value) ?? null, [colors, value]);
+  const filtered = useMemo(() => colors.filter((c) => matches(c, query)), [colors, query]);
 
-  const filtered = useMemo(
-    () => colors.filter((c) => matches(c, query)),
-    [colors, query],
-  );
-
-  // Close when focus or a click lands outside the whole control.
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
@@ -69,7 +59,6 @@ export default function ColorPicker({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  // Keep the highlighted row in view during keyboard navigation.
   useEffect(() => {
     if (!open) return;
     listRef.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({
@@ -96,10 +85,7 @@ export default function ColorPicker({
         return;
       }
       const step = e.key === "ArrowDown" ? 1 : -1;
-      setHighlight((h) => {
-        if (filtered.length === 0) return 0;
-        return (h + step + filtered.length) % filtered.length;
-      });
+      setHighlight((h) => (filtered.length === 0 ? 0 : (h + step + filtered.length) % filtered.length));
       return;
     }
     if (e.key === "Enter") {
@@ -121,7 +107,7 @@ export default function ColorPicker({
 
       <div className={`color-picker-control${disabled ? " disabled" : ""}`}>
         {selected && !open && (
-          <span className="swatch" style={{ background: selected.hex_code }} aria-hidden="true" />
+          <span className="swatch" style={{ background: selected.hex }} aria-hidden="true" />
         )}
 
         <input
@@ -132,13 +118,7 @@ export default function ColorPicker({
           aria-autocomplete="list"
           disabled={disabled}
           placeholder={selected && !open ? undefined : placeholder}
-          value={
-            open
-              ? query
-              : selected
-                ? `${selected.name}${selected.code ? ` · ${selected.code}` : ""}`
-                : ""
-          }
+          value={open ? query : selected ? `${selected.name} · ${selected.code}` : ""}
           onFocus={() => {
             setOpen(true);
             setHighlight(0);
@@ -151,13 +131,13 @@ export default function ColorPicker({
           onKeyDown={handleKeyDown}
         />
 
-        {allowClear && value !== "" && !disabled && (
+        {allowClear && value != null && !disabled && (
           <button
             type="button"
             className="color-picker-clear"
             title="Clear"
             onClick={() => {
-              onChange("");
+              onChange(null);
               close();
             }}
           >
@@ -168,7 +148,9 @@ export default function ColorPicker({
 
       {open && (
         <ul className="color-picker-list" ref={listRef} role="listbox">
-          {filtered.length === 0 && <li className="color-picker-empty">No colors match “{query}”</li>}
+          {filtered.length === 0 && (
+            <li className="color-picker-empty">No colors match “{query}”</li>
+          )}
           {filtered.map((c, i) => (
             <li
               key={c.id}
@@ -184,13 +166,11 @@ export default function ColorPicker({
               }}
               onMouseEnter={() => setHighlight(i)}
             >
-              <span className="swatch" style={{ background: c.hex_code }} aria-hidden="true" />
+              <span className="swatch" style={{ background: c.hex }} aria-hidden="true" />
               <span className="color-picker-name">{c.name}</span>
-              <span className="color-picker-hex">{c.hex_code}</span>
+              <span className="color-picker-hex">{c.hex}</span>
               <span className="color-picker-meta">
-                {c.code ? `${c.code} · ` : ""}
-                {c.brand}
-                {c.finish ? ` · ${c.finish}` : ""}
+                {c.code} · {c.brand}
               </span>
             </li>
           ))}

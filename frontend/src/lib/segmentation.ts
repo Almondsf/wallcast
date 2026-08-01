@@ -28,8 +28,14 @@ const ADE20K_WALL_CLASS = 0;
 
 export type Device = "webgpu" | "wasm";
 
-let loaded: { model: PreTrainedModel; processor: Processor; device: Device } | null = null;
-let loading: Promise<typeof loaded> | null = null;
+interface Loaded {
+  model: PreTrainedModel;
+  processor: Processor;
+  device: Device;
+}
+
+let loaded: Loaded | null = null;
+let loading: Promise<Loaded> | null = null;
 
 /** fp32 is ~4x the download of q8; q8 trades a little accuracy for size and speed. */
 export type Precision = "fp32" | "q8";
@@ -66,10 +72,7 @@ async function webGPUAvailable(): Promise<boolean> {
  * The fallback is not optional: WebGPU is absent or broken on plenty of mobile
  * browsers, which is exactly where this app gets used.
  */
-export function loadSegmenter(
-  force?: Device,
-  dtype: Precision = "q8",
-): Promise<NonNullable<typeof loaded>> {
+export function loadSegmenter(force?: Device, dtype: Precision = "q8"): Promise<Loaded> {
   if (loaded) return Promise.resolve(loaded);
   if (!loading) {
     loading = (async () => {
@@ -86,7 +89,7 @@ export function loadSegmenter(
       return loaded;
     })();
   }
-  return loading as Promise<NonNullable<typeof loaded>>;
+  return loading;
 }
 
 /** Bilinear resample matching torch's interpolate(..., align_corners=False). */

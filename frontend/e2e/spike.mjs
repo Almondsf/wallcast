@@ -16,6 +16,16 @@ const tag = process.argv[4] ?? "spike";
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1100, height: 1400 } });
 
+// Test photos live outside public/ so they never reach a production build.
+await page.route("**/test-photo/*", async (route, request) => {
+  const name = request.url().split("/").pop();
+  try {
+    await route.fulfill({ path: `e2e/assets/${name}` });
+  } catch {
+    await route.fulfill({ status: 404, body: "missing test photo" });
+  }
+});
+
 const errors = [];
 const console_ = [];
 page.on("console", (m) => {
