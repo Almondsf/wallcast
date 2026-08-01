@@ -28,6 +28,12 @@ wallcast.db
 # User uploads & generated renders
 uploads/
 
+# Local test artefacts: real room photos used for benchmarking, reference masks
+# generated from them, and e2e screenshots. None of this belongs in the repo.
+frontend/public/spike-*
+frontend/public/fixtures/
+frontend/e2e/output/
+
 # Testing / coverage
 .pytest_cache/
 .coverage

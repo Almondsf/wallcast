@@ -6,6 +6,7 @@ from app.models.paint_color import PaintColor
 from app.models.project import Project
 from app.models.render import Render
 from app.routers import auth, paint_colors, projects, renders
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 
@@ -17,9 +18,16 @@ async def lifespan(app: FastAPI):
     # any shutdown/cleanup code would go after yield
 
 app = FastAPI(title="WallCast", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth.router)
 app.include_router(paint_colors.router)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/tools", StaticFiles(directory="tools"), name="tools")
 app.include_router(projects.router)
 app.include_router(renders.router)
 

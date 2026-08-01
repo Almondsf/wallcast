@@ -1,0 +1,19 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+pydantic-settings
+python-jose
+passlib[bcrypt]
+python-multipart
+email-validator
+opencv-python-headless
+numpy
+
+# Semantic wall segmentation.
+# NOTE: the default SegFormer ADE20K weights (nvidia/segformer-*) are licensed
+# for NON-COMMERCIAL use only. Swap MODEL_NAME in app/services/segmentation_service.py
+# for an MIT/Apache model (Mask2Former, OneFormer, mmseg UPerNet) before shipping commercially.
+# Install torch from the CPU index to avoid pulling CUDA:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch
+transformers

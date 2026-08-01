@@ -1,0 +1,449 @@
+#root {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font-size: 14px;
+}
+
+.hint {
+  color: var(--text);
+  opacity: 0.75;
+  font-size: 14px;
+}
+
+.status {
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.status.error {
+  color: var(--error);
+}
+
+/* --- Auth --- */
+
+.auth-page {
+  max-width: 360px;
+  margin: 60px auto;
+  text-align: center;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.auth-tabs button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 16px;
+}
+
+.auth-tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.auth-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.auth-form button {
+  margin-top: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+}
+
+.auth-form button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.auth-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- Projects --- */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.upload-row {
+  margin-bottom: 20px;
+}
+
+.upload-btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background: var(--accent-hover);
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.project-card span {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+/* --- Project detail --- */
+
+.project-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  /* minmax(0, …) so a wide photo scales down instead of forcing the column
+     wider than its share, which would push the render off the page. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-grid section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.detail-grid select {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.slider-label {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Searchable colour picker --- */
+
+.color-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.color-picker-label {
+  font-size: 14px;
+}
+
+.color-picker-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.color-picker-control:focus-within {
+  border-color: var(--accent);
+}
+
+.color-picker-control.disabled {
+  opacity: 0.5;
+}
+
+.color-picker-control input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  outline: none;
+}
+
+.color-picker-clear {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.6;
+}
+
+.color-picker-clear:hover {
+  opacity: 1;
+}
+
+.swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  /* Outlined so pale colours stay visible against the surface. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.color-picker-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 4px 0 0;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.color-picker-option {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.color-picker-option.active {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.color-picker-name {
+  color: var(--text-h);
+}
+
+.color-picker-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.color-picker-meta {
+  grid-column: 2 / -1;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.color-picker-empty {
+  padding: 10px 8px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.mode-toggle button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.mode-toggle button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mask-canvas-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.mask-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}
+
+/* --- Mask touch-up editor --- */
+
+.mask-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.mask-editor-stage {
+  position: relative;
+  line-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.mask-editor-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mask-editor-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.45;
+  cursor: crosshair;
+  touch-action: none; /* let pointer events drive the brush instead of scrolling */
+}
+
+.tool-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.render-result {
+  margin-top: 8px;
+}
+
+/* Block rather than inline-block: shrink-to-fit sized this to the photo's own
+   width, so anything smaller than the column rendered at natural size and
+   looked tiny next to the mask canvas opposite it. */
+.render-image-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.render-image-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.split-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.render-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 14px;
+}

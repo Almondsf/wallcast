@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>WallCast Mask Tester</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 20px auto; padding: 0 16px; }
+  fieldset { margin-bottom: 16px; padding: 12px; }
+  label { display: block; margin: 6px 0 2px; font-size: 13px; color: #333; }
+  input, select { padding: 4px 6px; font-size: 14px; }
+  button { padding: 6px 14px; margin-top: 8px; cursor: pointer; }
+  #canvasWrap { position: relative; display: inline-block; margin-top: 10px; }
+  canvas { max-width: 100%; border: 1px solid #ccc; cursor: crosshair; }
+  #points { font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+  #status { color: #b00; font-size: 13px; margin-top: 6px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 220px; }
+  img.result { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; }
+  .swatch { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: middle; border: 1px solid #999; }
+</style>
+</head>
+<body>
+
+<h2>WallCast Mask Tester</h2>
+<div id="status"></div>
+
+<fieldset>
+  <legend>1. Login</legend>
+  <div class="row">
+    <div>
+      <label>Email</label>
+      <input id="email" value="test@wallcast.dev">
+      <label>Password</label>
+      <input id="password" type="password" value="testpass123">
+      <button onclick="login()">Login</button>
+    </div>
+    <div>
+      <label>Token</label>
+      <input id="token" style="width: 100%">
+    </div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>2. Load project image</legend>
+  <label>Project ID</label>
+  <input id="projectId" type="number" style="width: 80px">
+  <button onclick="loadProject()">Load</button>
+  <div id="canvasWrap"><canvas id="canvas"></canvas></div>
+  <div>Click on the wall in the image to add seed points. Click a marker again to remove it.</div>
+  <div id="points"></div>
+  <button onclick="clearPoints()">Clear points</button>
+</fieldset>
+
+<fieldset>
+  <legend>3. Generate mask</legend>
+  <label>Tolerance: <span id="tolVal">20</span></label>
+  <input id="tolerance" type="range" min="1" max="80" value="20" oninput="document.getElementById('tolVal').textContent=this.value">
+  <br>
+  <button onclick="generateMask()">Generate Mask</button>
+  <div><img id="preview" class="result" style="display:none"></div>
+</fieldset>
+
+<fieldset>
+  <legend>4. Generate render</legend>
+  <div class="row">
+    <div>
+      <label>Top color</label>
+      <select id="topColor"></select>
+    </div>
+    <div>
+      <label>Bottom color (optional)</label>
+      <select id="bottomColor"><option value="">(none)</option></select>
+    </div>
+  </div>
+  <label>Split position: <span id="splitVal">50</span>%</label>
+  <input id="splitPosition" type="range" min="0" max="100" value="50" oninput="document.getElementById('splitVal').textContent=this.value">
+  <br>
+  <button onclick="generateRender()">Generate Render</button>
+  <div><img id="renderResult" class="result" style="display:none"></div>
+</fieldset>
+
+<script>
+const api = window.location.origin;
+let naturalW = 0, naturalH = 0;
+let points = [];
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let baseImage = null;
+
+function setStatus(msg, isError = true) {
+  const el = document.getElementById('status');
+  el.style.color = isError ? '#b00' : '#080';
+  el.textContent = msg || '';
+}
+
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    const res = await fetch(`${api}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    document.getElementById('token').value = data.access_token;
+    setStatus('Logged in.', false);
+  } catch (e) {
+    setStatus('Login failed: ' + e.message);
+  }
+}
+
+function authHeaders(extra = {}) {
+  const token = document.getElementById('token').value;
+  return { Authorization: `Bearer ${token}`, ...extra };
+}
+
+async function loadProject() {
+  const id = document.getElementById('projectId').value;
+  try {
+    const res = await fetch(`${api}/projects/${id}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    const project = await res.json();
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      naturalW = img.naturalWidth;
+      naturalH = img.naturalHeight;
+      canvas.width = naturalW;
+      canvas.height = naturalH;
+      baseImage = img;
+      redraw();
+      setStatus(`Loaded ${naturalW}x${naturalH} image.`, false);
+    };
+    img.src = `${api}${project.original_image_url}`;
+    points = [];
+    renderPointsList();
+  } catch (e) {
+    setStatus('Load failed: ' + e.message);
+  }
+}
+
+function redraw() {
+  if (!baseImage) return;
+  ctx.drawImage(baseImage, 0, 0);
+  ctx.fillStyle = 'red';
+  points.forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(4, naturalW / 150), 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
+canvas.addEventListener('click', (e) => {
+  if (!baseImage) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = Math.round((e.clientX - rect.left) * scaleX);
+  const y = Math.round((e.clientY - rect.top) * scaleY);
+
+  const hitRadius = Math.max(6, naturalW / 100);
+  const hitIdx = points.findIndex(([px, py]) => Math.hypot(px - x, py - y) < hitRadius);
+  if (hitIdx >= 0) {
+    points.splice(hitIdx, 1);
+  } else {
+    points.push([x, y]);
+  }
+  redraw();
+  renderPointsList();
+});
+
+function renderPointsList() {
+  document.getElementById('points').textContent = JSON.stringify(points.map(([x, y]) => ({ x, y })), null, 2);
+}
+
+function clearPoints() {
+  points = [];
+  redraw();
+  renderPointsList();
+}
+
+async function generateMask() {
+  const id = document.getElementById('projectId').value;
+  const tolerance = parseInt(document.getElementById('tolerance').value, 10);
+  if (points.length === 0) { setStatus('Add at least one point first.'); return; }
+  try {
+    const res = await fetch(`${api}/projects/${id}/mask`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ points: points.map(([x, y]) => ({ x, y })), tolerance }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    const previewImg = document.getElementById('preview');
+    previewImg.src = `${api}${data.preview_url}?t=${Date.now()}`;
+    previewImg.style.display = 'block';
+    setStatus('Mask generated. Check the tinted preview below.', false);
+  } catch (e) {
+    setStatus('Mask generation failed: ' + e.message);
+  }
+}
+
+async function loadColors() {
+  try {
+    const res = await fetch(`${api}/paint-colors/`);
+    const colors = await res.json();
+    const top = document.getElementById('topColor');
+    const bottom = document.getElementById('bottomColor');
+    colors.forEach((c) => {
+      const label = `${c.name} (${c.hex_code}) - ${c.brand}`;
+      top.appendChild(new Option(label, c.id));
+      bottom.appendChild(new Option(label, c.id));
+    });
+  } catch (e) {
+    setStatus('Could not load paint colors: ' + e.message);
+  }
+}
+loadColors();
+
+async function generateRender() {
+  const id = document.getElementById('projectId').value;
+  const topId = parseInt(document.getElementById('topColor').value, 10);
+  const bottomVal = document.getElementById('bottomColor').value;
+  const bottomId = bottomVal ? parseInt(bottomVal, 10) : null;
+  const splitPosition = bottomId ? parseInt(document.getElementById('splitPosition').value, 10) : null;
+
+  try {
+    const res = await fetch(`${api}/projects/${id}/renders/`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        paint_color_top_id: topId,
+        paint_color_bottom_id: bottomId,
+        split_position: splitPosition,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    const resultImg = document.getElementById('renderResult');
+    resultImg.src = `${api}${data.result_image_url}?t=${Date.now()}`;
+    resultImg.style.display = 'block';
+    setStatus('Render generated.', false);
+  } catch (e) {
+    setStatus('Render failed: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

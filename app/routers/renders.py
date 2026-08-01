@@ -9,7 +9,7 @@ from app.models.project import Project
 from app.models.paint_color import PaintColor
 from app.models.render import Render
 from app.schemas.render import RenderCreate, RenderRead
-from app.services.render_service import build_prompt, generate_render
+from app.services.render_service import render_wall_color
 
 router = APIRouter(prefix="/projects/{project_id}/renders", tags=["renders"])
 
@@ -28,6 +28,9 @@ def create_render(
     if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if not project.mask_url:
+        raise HTTPException(status_code=400, detail="Project has no wall mask yet. Create one via POST /projects/{project_id}/mask first.")
+
     top_color = session.get(PaintColor, data.paint_color_top_id)
     if not top_color:
         raise HTTPException(status_code=400, detail="Invalid top paint color")
@@ -38,18 +41,19 @@ def create_render(
         if not bottom_color:
             raise HTTPException(status_code=400, detail="Invalid bottom paint color")
 
-    prompt = build_prompt(
-        top_color.name, top_color.hex_code,
-        bottom_color.name if bottom_color else None,
-        bottom_color.hex_code if bottom_color else None,
-    )
-
     local_image_path = project.original_image_url.lstrip("/")
+    local_mask_path = project.mask_url.lstrip("/")
 
     try:
-        image_bytes = generate_render(local_image_path, prompt)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI render failed: {str(e)}")
+        image_bytes = render_wall_color(
+            local_image_path,
+            local_mask_path,
+            top_color.hex_code,
+            bottom_color.hex_code if bottom_color else None,
+            data.split_position,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     result_filename = f"{uuid.uuid4()}.png"
     result_path = os.path.join(RESULT_DIR, result_filename)
@@ -60,7 +64,7 @@ def create_render(
         project_id=project.id,
         paint_color_top_id=top_color.id,
         paint_color_bottom_id=bottom_color.id if bottom_color else None,
-        prompt_used=prompt,
+        split_position=data.split_position if bottom_color else None,
         result_image_url=f"/{RESULT_DIR}/{result_filename}",
         status="done",
     )

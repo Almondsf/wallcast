@@ -9,6 +9,24 @@ from fastapi.security import OAuth2PasswordRequestForm
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.post("/register", response_model=Token)
+def register(
+    data: UserCreate,
+    session: Session = Depends(get_session),
+):
+    existing = session.exec(select(User).where(User.email == data.email)).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    user = User(email=data.email, hashed_password=hash_password(data.password))
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    token = create_access_token(user.id)
+    return Token(access_token=token)
+
+
 @router.post("/login", response_model=Token)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
