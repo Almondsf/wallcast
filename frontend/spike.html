@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WallCast — browser segmentation spike</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; margin: 24px; background: #16181d; color: #e6e6e6; }
+      h1 { font-size: 18px; }
+      #log { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 13px;
+             background: #1e2128; padding: 12px; border-radius: 8px; line-height: 1.6; }
+      canvas { max-width: 100%; margin-top: 16px; border-radius: 8px; display: block; }
+      .err { color: #ff6b6b; }
+    </style>
+  </head>
+  <body>
+    <h1>Browser segmentation spike</h1>
+    <div id="log">starting…</div>
+    <canvas id="out"></canvas>
+    <script type="module" src="/src/spike.ts"></script>
+  </body>
+</html>
