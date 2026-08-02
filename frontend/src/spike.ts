@@ -92,11 +92,10 @@ async function run() {
 
     log("loading model… (first run downloads weights)");
     const t1 = performance.now();
-    const forced = params.get("device") as "webgpu" | "wasm" | null;
     const dtype = (params.get("dtype") as "fp32" | "q8" | null) ?? "q8";
     result.dtype = dtype;
     log(`dtype:  ${dtype}`);
-    const { device } = await loadSegmenter(forced ?? undefined, dtype);
+    const { device } = await loadSegmenter(dtype);
     const loadMs = performance.now() - t1;
     log(`loaded: device=${device}  ${loadMs.toFixed(0)}ms`);
     result.device = device;

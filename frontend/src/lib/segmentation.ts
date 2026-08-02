@@ -26,7 +26,7 @@ export const MODEL_ID = "Xenova/segformer-b0-finetuned-ade-512-512";
 // so they fall out of the wall mask automatically.
 const ADE20K_WALL_CLASS = 0;
 
-export type Device = "webgpu" | "wasm";
+export type Device = "wasm";
 
 interface Loaded {
   model: PreTrainedModel;
@@ -50,41 +50,19 @@ async function tryLoad(device: Device, dtype: Precision) {
 }
 
 /**
- * Is WebGPU actually usable, not merely present?
+ * Load the model once.
  *
- * `'gpu' in navigator` is true in plenty of environments that then fail to return
- * an adapter — headless Chrome and a fair number of mobile browsers among them.
- * Only requesting an adapter tells you the truth.
+ * WASM only. WebGPU would need ONNX Runtime's asyncify build, which is roughly
+ * twice the download for no measured gain here — and on a slow connection the
+ * download, not the inference, is what people wait for. See the alias in
+ * vite.config.ts; restoring WebGPU means removing it and reinstating a
+ * capability check plus a WASM fallback, since WebGPU is still absent or broken
+ * on a good share of mobile browsers.
  */
-async function webGPUAvailable(): Promise<boolean> {
-  const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown | null> } }).gpu;
-  if (!gpu) return false;
-  try {
-    return (await gpu.requestAdapter()) != null;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Load the model once, preferring WebGPU and falling back to WASM.
- *
- * The fallback is not optional: WebGPU is absent or broken on plenty of mobile
- * browsers, which is exactly where this app gets used.
- */
-export function loadSegmenter(force?: Device, dtype: Precision = "q8"): Promise<Loaded> {
+export function loadSegmenter(dtype: Precision = "q8"): Promise<Loaded> {
   if (loaded) return Promise.resolve(loaded);
   if (!loading) {
     loading = (async () => {
-      if (force !== "wasm" && (force === "webgpu" || (await webGPUAvailable()))) {
-        try {
-          loaded = await tryLoad("webgpu", dtype);
-          return loaded;
-        } catch {
-          // An adapter that exists but fails to compile the graph is common
-          // enough that this must not be fatal.
-        }
-      }
       loaded = await tryLoad("wasm", dtype);
       return loaded;
     })();
